@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IOM Health — Supply Distribution Tracker</title>
+<style>
+  :root {
+    --blue:#0072BC; --dark:#003F6B; --light:#E8F4FD;
+    --bg:#F0F4F8; --card:#FFFFFF; --border:#E2E8F0;
+    --text:#1A202C; --muted:#718096;
+    --green:#10B981; --amber:#F59E0B; --red:#EF4444;
+    --purple:#8B5CF6; --teal:#14B8A6;
+    --ipc:#3B82F6; --thr:#8B5CF6; --ppe:#F59E0B; --fur:#14B8A6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-width:960px;}
+
+  /* HEADER */
+  .hdr{background:linear-gradient(135deg,var(--dark) 0%,#005a94 100%);color:#fff;
+    display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:3px solid var(--blue);}
+  .hdr-t{flex:1;}
+  .hdr-t h1{font-size:15px;font-weight:700;margin-bottom:2px;}
+  .hdr-t p{font-size:11px;color:#A3BFCF;}
+  .hdr-d{text-align:right;font-size:11px;color:#A3BFCF;line-height:1.7;}
+  .hdr-d strong{color:#fff;font-size:13px;}
+
+  /* FILTER BAR */
+  .fbar{background:var(--card);border-bottom:1px solid var(--border);
+    padding:8px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .flbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .chip{background:var(--light);color:var(--dark);border:1.5px solid var(--blue);
+    border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;cursor:pointer;}
+  .chip.on{background:var(--blue);color:#fff;}
+  .sep{width:1px;height:22px;background:var(--border);}
+  select{border:1px solid var(--border);background:var(--card);color:var(--text);
+    padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;}
+
+  /* PAGE */
+  .page{padding:16px 24px;display:grid;gap:16px;}
+
+  /* KPI STRIP */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch;}
+  .kpi{background:var(--card);border-radius:12px;padding:18px 22px;
+    border:1px solid var(--border);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:4px;}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:12px 12px 0 0;}
+  .kpi.blue::before{background:var(--blue);}
+  .kpi.green::before{background:var(--green);}
+  .kpi.amber::before{background:var(--amber);}
+  .kpi.purple::before{background:var(--purple);}
+  .kpi.teal::before{background:var(--teal);}
+  .kpi.dark::before{background:var(--dark);}
+  .kpi.red::before{background:var(--red);}
+  .kpi-head{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+  .kpi-icon{width:18px;height:18px;flex-shrink:0;}
+  .kpi-icon svg{display:block;width:100%;height:100%;}
+  .kpi.dark .kpi-icon{color:var(--dark);}
+  .kpi.green .kpi-icon{color:var(--green);}
+  .kpi.teal .kpi-icon{color:var(--teal);}
+  .kpi.red .kpi-icon{color:var(--red);}
+  .kpi-lbl{font-size:9.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .kpi-val{font-size:32px;font-weight:900;line-height:1.1;}
+  .kpi.blue .kpi-val{color:var(--blue);}
+  .kpi.green .kpi-val{color:var(--green);}
+  .kpi.amber .kpi-val{color:var(--amber);}
+  .kpi.purple .kpi-val{color:var(--purple);}
+  .kpi.teal .kpi-val{color:var(--teal);}
+  .kpi.dark .kpi-val{color:var(--dark);}
+  .kpi.red .kpi-val{color:var(--red);}
+  .kpi-sub{font-size:10px;color:var(--muted);}
+  .kpi-est{font-size:9px;color:#94A3B8;font-style:italic;margin-top:2px;}
+
+  /* CARD */
+  .card{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+  .ch{padding:12px 18px 10px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;}
+  .ch h2{font-size:12px;font-weight:700;}
+  .ch p{font-size:10px;color:var(--muted);margin-top:1px;}
+  .tag{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;}
+  .t-blue{background:#DBEAFE;color:#1D4ED8;}
+  .t-green{background:#D1FAE5;color:#065F46;}
+  .t-amber{background:#FEF3C7;color:#92400E;}
+  .t-red{background:#FEE2E2;color:#991B1B;}
+  .t-purple{background:#EDE9FE;color:#5B21B6;}
+  .t-teal{background:#CCFBF1;color:#0F766E;}
+  .cb{padding:16px 18px;}
+
+  /* LAYOUT */
+  .row2{display:grid;grid-template-columns:0.9fr 1.1fr;gap:16px;}
+  .row-rbc{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+
+  /* LEGEND DOTS */
+  .li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+  .lsq{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+
+  /* DONUT CARDS (fulfillment) */
+  .fulfil-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .fmini{display:flex;align-items:center;gap:8px;background:#F8FAFC;padding:9px;border-radius:8px;}
+  .fmini.alert{background:#FFF5F5;border:1px solid #FEE2E2;}
+
+  /* BORDER CARDS */
+  .borders-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .bcard{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden;
+    height:290px;display:flex;flex-direction:column;}
+  .bcard:hover{box-shadow:0 4px 18px rgba(0,0,0,.09);}
+  .bcard.pend{border:1.5px dashed var(--red);background:#FFF8F8;}
+
+  /* Border card header */
+  .bc-hdr{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .sdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .sdot.g{background:var(--green);box-shadow:0 0 0 3px rgba(16,185,129,.2);}
+  .sdot.a{background:var(--amber);box-shadow:0 0 0 3px rgba(245,158,11,.2);}
+  .sdot.r{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.2);}
+  .bc-nblk{flex:1;}
+  .bc-name{font-size:14px;font-weight:800;color:var(--dark);display:inline;}
+  .bcard.pend .bc-name{color:var(--red);}
+  .bc-prov{font-size:10px;color:var(--muted);margin-top:2px;}
+
+  /* Status badges */
+  .bc-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;white-space:nowrap;display:inline-block;margin-left:6px;vertical-align:middle;}
+  .bc-badge.critical{background:#FEE2E2;color:#991B1B;}
+  .bc-badge.low{background:#FEF3C7;color:#92400E;}
+  .bc-badge.ok{background:#D1FAE5;color:#065F46;}
+  .bc-badge.miss{background:#F1F5F9;color:#64748B;}
+
+  /* Body */
+  .bc-body{padding:8px 14px 8px;display:flex;flex-direction:column;gap:0;flex:1;overflow-y:auto;scroll-behavior:smooth;}
+  .bc-body::-webkit-scrollbar{width:4px;}
+  .bc-body::-webkit-scrollbar-track{background:transparent;}
+  .bc-body::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px;}
+  .bc-body::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+  .bc-cat{margin-bottom:4px;}
+  .bc-cat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    padding:1px 6px;border-radius:3px;display:inline-block;margin-bottom:3px;}
+  .bc-cat-lbl.ipc{background:#DBEAFE;color:#1E40AF;}
+  .bc-cat-lbl.thr{background:#EDE9FE;color:#6D28D9;}
+  .bc-cat-lbl.ppe{background:#FEF3C7;color:#B45309;}
+  .bc-cat-lbl.fur{background:#CCFBF1;color:#0F766E;}
+
+  /* Item rows */
+  .bc-item{padding:5px 0;border-top:1px solid #EEF2F7;}
+  .bc-iname{font-size:10px;font-weight:600;color:var(--text);margin-bottom:3px;}
+  .bc-cols{display:grid;grid-template-columns:58px 58px 1fr;gap:0 6px;align-items:start;}
+  .bc-cols.two{grid-template-columns:76px 1fr;}
+  .bc-col-hdr{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:2px;}
+  .bc-col-val{font-size:12px;font-weight:800;color:var(--text);}
+  .bc-sbar{background:#E2E8F0;border-radius:3px;height:7px;overflow:hidden;margin-bottom:3px;}
+  .bc-sfill{height:100%;border-radius:3px;}
+  .bc-sbadge{font-size:8px;font-weight:800;padding:1px 6px;border-radius:6px;display:inline-block;}
+  .bc-sbadge.dep{background:#FEE2E2;color:#991B1B;}
+  .bc-sbadge.crit{background:#FFEDD5;color:#C2410C;}
+  .bc-sbadge.low{background:#FEF3C7;color:#92400E;}
+  .bc-sbadge.ok{background:#D1FAE5;color:#065F46;}
+
+  .bc-donor-tag{font-size:8px;font-weight:700;padding:1px 7px;border-radius:10px;
+    background:#EFF6FF;color:#1E40AF;display:inline-block;margin-left:5px;vertical-align:middle;}
+
+  .bc-footer{font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding:7px 16px;}
+  .bc-footer span{font-weight:700;color:var(--text);}
+
+  /* RBC request pipeline table */
+  .req-hdr,.req-row{display:grid;grid-template-columns:108px 1fr 46px 90px 90px 110px;align-items:center;}
+  .req-hdr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--muted);padding:7px 18px;border-bottom:1px solid var(--border);}
+  .req-row{padding:0 18px;border-bottom:1px solid var(--border);}
+  .req-row:last-child{border-bottom:none;}
+  .req-td{padding:8px 6px;font-size:11px;display:flex;align-items:center;}
+  .req-td:first-child{padding-left:0;}
+  .req-status{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;display:inline-block;}
+  .req-status.pending{background:#FEF3C7;color:#92400E;}
+  .req-status.inproc{background:#DBEAFE;color:#1E40AF;}
+  .req-status.confirmed{background:#D1FAE5;color:#065F46;}
+  /* donor breakdown — div-based */
+  .drow{margin-bottom:11px;} .drow:last-child{margin-bottom:0;}
+  .d-hdr{display:flex;align-items:baseline;gap:4px;margin-bottom:3px;}
+  .d-name{font-size:9px;font-weight:700;color:var(--text);}
+  .d-spend{font-size:7px;color:var(--muted);flex:1;padding-left:3px;}
+  .d-pct{font-size:10px;font-weight:900;}
+  .d-track{height:10px;background:#F1F5F9;border-radius:5px;overflow:hidden;margin-bottom:3px;}
+  .d-fill{height:100%;display:flex;}
+  .d-seg{height:100%;}
+  .d-cats{font-size:7px;color:var(--muted);}
+  .d-leg{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:12px;}
+  .d-leg-item{display:flex;align-items:center;gap:4px;font-size:7.5px;color:var(--muted);}
+  .d-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+  /* scrollable card body — shared thin scrollbar */
+  .card-scroll{overflow-y:auto;}
+  .card-scroll::-webkit-scrollbar{width:4px;}
+  .card-scroll::-webkit-scrollbar-track{background:transparent;}
+  .card-scroll::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px;}
+  .card-scroll::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+
+  /* SVG chart shared */
+  svg text{font-family:'Segoe UI',system-ui,sans-serif;}
+
+  /* section heading */
+  .sec-lbl{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;
+    letter-spacing:1px;margin-bottom:10px;}
+
+  /* FOOTER */
+  .footer{background:var(--card);border-top:1px solid var(--border);
+    padding:8px 24px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
+
+  /* UPLOAD BUTTON */
+  .upload-btn{display:flex;align-items:center;gap:6px;background:var(--blue);color:#fff;
+    border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;
+    cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;}
+  .upload-btn:hover{background:#005a9e;}
+  .upload-info{font-size:10px;color:rgba(255,255,255,.6);white-space:nowrap;}
+
+  @media(max-width:900px){
+    .kpis{grid-template-columns:repeat(3,1fr);}
+    .row2{grid-template-columns:1fr;}
+    .borders-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- DATA BLOCK -->
+<script>
+const DATA = {
+  kpis: {
+    spend:   { value: "", subtitle: "", note: "* Estimated — update from purchase orders" },
+    rate:    { value: "", subtitle: "" },
+    reached: { value: "", subtitle: "" },
+    alerts:  { value: "", subtitle: "" },
+  },
+  overall: { pct: 0, distributed: 0, procured: 0 },
+  categories: [
+    { id:"ipc", label:"IPC Supplies",   procured:71, distributed:71, spend:1420, color:"#3B82F6", requested:100 },
+    { id:"thr", label:"Thermoscanners", procured:50, distributed:40, spend:3250, color:"#8B5CF6", requested:60  },
+    { id:"ppe", label:"PPE",            procured:40, distributed:35, spend:600,  color:"#F59E0B", requested:60  },
+    { id:"fur", label:"Furniture",      procured:20, distributed:10, spend:3600, color:"#14B8A6", requested:25  },
+  ],
+  borders: [
+    {
+      name: "Pois Lourd", district: "Rubavu", region: "Western",
+      lastDist: "01 May 2026", donor: "CDC",
+      items: [
+        { cat:"ipc", name:"Hygiene Kit",             supplied:1,   used:1  },
+        { cat:"thr", name:"Thermoscanner (handheld)", supplied:4,   used:4  },
+        { cat:"ppe", name:"Gloves — Nitrile",         supplied:100, used:93 },
+      ]
+    },
+    {
+      name: "Kagitumba", district: "Nyagatare", region: "Eastern",
+      lastDist: "01 May 2026", donor: "GHSD / CDC",
+      items: [
+        { cat:"ipc", name:"Big Dustbin (60L)",        supplied:20, used:15, donor:"GHSD" },
+        { cat:"thr", name:"Thermoscanner (handheld)", supplied:2,  used:2,  donor:"CDC"  },
+      ]
+    },
+    {
+      name: "Rusizi I", district: "Rusizi", region: "Western",
+      lastDist: "02 May 2026", donor: "CDC",
+      items: [
+        { cat:"ipc", name:"Small Dustbin (20L)", supplied:30, used:30 },
+      ]
+    },
+    {
+      name: "La Corniche", district: "Rubavu", region: "Western",
+      lastDist: "03 May 2026", donor: "CDC",
+      items: [
+        { cat:"ipc", name:"Dustbin (40L)", supplied:20, used:19 },
+      ]
+    },
+    {
+      name: "Rusizi II", district: "Rusizi", region: "Western",
+      lastDist: "01 May 2026", donor: "JSB",
+      items: [
+        { cat:"thr", name:"Thermoscanner (handheld)", supplied:3, used:3 },
+      ]
+    },
+    {
+      name: "Rusumo", district: "Kirehe", region: "Eastern",
+      lastDist: "01 May 2026", donor: "CDC",
+      items: [
+        { cat:"thr", name:"Thermoscanner (handheld)", supplied:1,  used:1 },
+        { cat:"ppe", name:"Gloves — Nitrile",         supplied:10, used:5 },
+      ]
+    },
+    {
+      name: "Gatuna", district: "Gicumbi", region: "Northern",
+      lastDist: "—", donor: "Not assigned",
+      items: [
+        { cat:"fur", name:"Tables & Desks (set)", supplied:0, used:0 },
+      ]
+    },
+    {
+      name: "Cyanika", district: "Burera", region: "Northern",
+      lastDist: "—", donor: "Not assigned",
+      items: [
+        { cat:"thr", name:"Thermoscanner (handheld)", supplied:0, used:0 },
+      ]
+    },
+  ],
+  requests: [
+    { cat:"ipc", item:"Hygiene Kits (bulk)",           qty:50,  requested:"10 Sep 2026", expected:"15 Nov 2026", status:"inproc"    },
+    { cat:"thr", item:"Thermoscanners (handheld)",      qty:10,  requested:"12 Sep 2026", expected:"01 Dec 2026", status:"pending"   },
+    { cat:"ppe", item:"Surgical Masks (box of 50)",     qty:30,  requested:"20 Sep 2026", expected:"30 Nov 2026", status:"confirmed" },
+    { cat:"fur", item:"Waiting Benches (4-seater)",     qty:8,   requested:"01 Oct 2026", expected:"15 Jan 2027", status:"pending"   },
+  ],
+  donors: [
+    { name:"CDC",        color:"#0072BC", spend:{ ipc:1100, thr:2275, ppe:600 } },
+    { name:"GHSD",       color:"#059669", spend:{ ipc:320                      } },
+    { name:"JSB",        color:"#D97706", spend:{ thr:975                      } },
+    { name:"Unassigned", color:"#94A3B8", spend:{ fur:3600                     } },
+  ],
+};
+</script>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-t">
+    <h1>IOM Rwanda — Health Portfolio Supply Distribution Tracker</h1>
+    <p>Points of Entry · IPC Supplies · Thermoscanners · PPE · Furniture</p>
+  </div>
+  <input type="file" id="xl-input" accept=".xlsx,.xls" style="display:none">
+  <span class="upload-info" id="xl-info"></span>
+  <button class="upload-btn" onclick="document.getElementById('xl-input').click()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Upload Excel
+  </button>
+  <div class="hdr-d">Last updated <strong id="hdr-date"></strong></div>
+</div>
+
+
+<div class="page">
+
+  <!-- KPI STRIP -->
+  <div class="kpis" id="kpi-strip"></div>
+
+  <!-- ROW: RBC Requests + Fulfillment at a Glance -->
+  <div class="row-rbc">
+
+    <!-- RBC PENDING REQUESTS -->
+    <div class="card">
+      <div class="ch">
+        <div>
+          <h2>RBC Pending Requests</h2>
+          <p>Items requested by Rwanda Biomedical Centre · awaiting procurement &amp; delivery</p>
+        </div>
+        <span class="tag t-amber" id="rbc-tag"></span>
+      </div>
+      <div class="req-hdr">
+        <span>Category</span><span>Item</span><span>Qty</span>
+        <span>Requested</span><span>Expected by</span><span>Status</span>
+      </div>
+      <div id="rbc-grid" class="card-scroll" style="max-height:240px"></div>
+    </div>
+
+    <!-- Fulfillment at a Glance -->
+    <div class="card">
+      <div class="ch">
+        <div><h2>Fulfillment at a Glance</h2></div>
+        <span class="tag t-green" id="fulfil-tag"></span>
+      </div>
+      <div class="cb card-scroll" style="display:flex;flex-direction:column;gap:14px;max-height:280px">
+        <div style="display:flex;align-items:center;gap:18px">
+          <svg width="90" height="90" viewBox="0 0 90 90" id="donut-overall">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#10B981"/>
+                <stop offset="100%" stop-color="#059669"/>
+              </linearGradient>
+            </defs>
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#EEF2F7" stroke-width="12"/>
+            <circle id="donut-arc" cx="45" cy="45" r="36" fill="none" stroke="url(#g1)" stroke-width="12"
+              stroke-linecap="round"/>
+            <text x="45" y="41" text-anchor="middle" fill="var(--text)" font-size="16" font-weight="900" id="donut-pct"></text>
+            <text x="45" y="54" text-anchor="middle" fill="var(--muted)" font-size="8">distributed</text>
+          </svg>
+          <div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px">Overall Consumption</div>
+            <div style="font-size:11px;color:var(--muted);line-height:2" id="fulfil-summary"></div>
+          </div>
+        </div>
+        <div class="fulfil-grid" id="mini-donuts"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Procured Items by Category + Donor Contributions -->
+  <div class="card">
+    <div class="ch">
+      <div>
+        <h2>Procured Items by Category</h2>
+        <p>Estimated spend by category across all PoEs</p>
+      </div>
+      <span class="tag t-blue" id="cat-tag"></span>
+    </div>
+    <div style="display:flex;align-items:stretch;max-height:260px">
+      <div style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <svg id="cat-donut" viewBox="0 0 340 186" style="height:224px;width:auto;max-width:100%;display:block" xmlns="http://www.w3.org/2000/svg">
+        </svg>
+      </div>
+      <div class="card-scroll" style="flex:0 0 40%;border-left:1px solid var(--border);padding:14px 16px;display:flex;flex-direction:column">
+        <div style="font-size:8.5px;font-weight:700;color:var(--blue);text-transform:uppercase;
+          letter-spacing:.8px;margin-bottom:12px;flex-shrink:0">Donor Contributions</div>
+        <div id="donor-chart" class="card-scroll" style="flex:1;min-height:0"></div>
+        <div id="donor-legend" class="d-leg" style="flex-shrink:0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BORDER CARDS -->
+  <div>
+    <div class="sec-lbl">Item-Level Distribution &amp; Usage by PoE</div>
+    <div class="borders-grid" id="borders-grid"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div>IOM Rwanda · Health Portfolio Tracker · <strong>CONFIDENTIAL</strong></div>
+  <div>Source: IOM_Rwanda_Health_Dashboard_Data.xlsx &nbsp;·&nbsp; Donors: CDC · GHSD · JSB</div>
+</div>
+
+<!-- SheetJS for Excel upload -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+/* ── Excel upload handler ─────────────────────────────────────────── */
+document.getElementById('xl-input').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('xl-info').textContent = 'Reading…';
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try {
+      var wb = XLSX.read(ev.target.result, { type:'binary', cellDates:true });
+      var updated = false;
+
+      /* helper: find a sheet by candidate names */
+      function getSheet(names){
+        for (var i=0;i<names.length;i++){
+          var s = wb.Sheets[names[i]];
+          if (s) return XLSX.utils.sheet_to_json(s, {defval:''});
+          /* case-insensitive fallback */
+          var low = names[i].toLowerCase().replace(/\s/g,'');
+          var found = wb.SheetNames.find(function(n){ return n.toLowerCase().replace(/\s/g,'')=== low; });
+          if (found) return XLSX.utils.sheet_to_json(wb.Sheets[found], {defval:''});
+        }
+        return null;
+      }
+      function fmtDate(v){
+        if (!v) return '—';
+        if (v instanceof Date && !isNaN(v)) return v.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+        if (typeof v==='number' && v>40000){ var d=new Date(Math.round((v-25569)*86400000)); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+        return String(v).trim()||'—';
+      }
+      function cell(row){ for (var i=1;i<arguments.length;i++){ var v=row[arguments[i]]; if (v!==undefined && v!=='') return v; } return ''; }
+
+      /* CategoryTotals → DATA.categories (update numbers only; keep id/color/label) */
+      var catRows = getSheet(['CategoryTotals','Category Totals','Categories','Sheet1']);
+      if (catRows && catRows.length){
+        var catNameId = {'ipc supplies':'ipc','thermoscanners':'thr','ppe':'ppe','furniture':'fur'};
+        catRows.forEach(function(r){
+          var n = String(cell(r,'Category','category')||'').trim().toLowerCase();
+          var id = catNameId[n];
+          if (!id) return;
+          var cat = DATA.categories.find(function(c){ return c.id===id; });
+          if (!cat) return;
+          var p = +cell(r,'Total Procured','Procured','procured')||0;
+          var d = +cell(r,'Total Distributed','Distributed','distributed')||0;
+          var s = +cell(r,'Spend (auto, USD)','Spend (USD)','Spend','spend')||0;
+          if (p) cat.procured = p;
+          if (d) cat.distributed = d;
+          if (s) cat.spend = s;
+          updated = true;
+        });
+      }
+
+      /* DonorContributions → DATA.donors */
+      var donorRows = getSheet(['DonorContributions','Donor Contributions','Donors']);
+      if (donorRows && donorRows.length){
+        donorRows.forEach(function(r){
+          var n = String(cell(r,'Donor','donor')||'').trim();
+          if (!n || n.toUpperCase()==='TOTAL') return;
+          var don = DATA.donors.find(function(d){ return d.name.toLowerCase()===n.toLowerCase(); });
+          if (!don){ don={name:n,color:'#94A3B8',spend:{}}; DATA.donors.push(don); }
+          don.spend.ipc  = +cell(r,'IPC Supplies (USD)','IPC Supplies','ipc')||0;
+          don.spend.thr  = +cell(r,'Thermoscanners (USD)','Thermoscanners','thermo','thr')||0;
+          don.spend.ppe  = +cell(r,'PPE (USD)','PPE','ppe')||0;
+          don.spend.fur  = +cell(r,'Furniture (USD)','Furniture','fur')||0;
+          updated = true;
+        });
+      }
+
+      /* RBCRequests → DATA.requests */
+      var rbcRows = getSheet(['RBCRequests','RBC Requests','RBC','Requests']);
+      if (rbcRows && rbcRows.length){
+        var catNameToId={'ipc supplies':'ipc','thermoscanners':'thr','ppe':'ppe','furniture':'fur'};
+        var statusMap={'in procurement':'inproc','pending':'pending','confirmed':'confirmed'};
+        var mapped = rbcRows.map(function(r){
+          var catName = String(cell(r,'Category','category')||'').trim().toLowerCase();
+          var st = String(cell(r,'Status','status')||'').trim().toLowerCase();
+          return {
+            cat:      catNameToId[catName] || catName,
+            item:     String(cell(r,'Item Description','Item','item')||'').trim(),
+            qty:      +cell(r,'Qty Requested','Qty','qty')||0,
+            requested:fmtDate(cell(r,'Date Requested','Requested','requested')),
+            expected: fmtDate(cell(r,'Expected Delivery','Delivery','delivery','expected')),
+            status:   statusMap[st] || st || 'pending',
+          };
+        }).filter(function(r){ return r.item; });
+        if (mapped.length){ DATA.requests = mapped; updated = true; }
+      }
+
+      /* PoESummary → update DATA.borders lastDist + donor */
+      var poeRows = getSheet(['PoESummary','PoE Summary','Borders','Border','Points of Entry']);
+      if (poeRows && poeRows.length){
+        poeRows.forEach(function(r){
+          var n = String(cell(r,'Border','PoE','border','Name')||'').trim();
+          if (!n) return;
+          var b = DATA.borders.find(function(x){ return x.name.toLowerCase()===n.toLowerCase(); });
+          if (!b) return;
+          var ld = cell(r,'Last Distribution','Last Dist','lastDist');
+          if (ld) b.lastDist = fmtDate(ld);
+          var don = cell(r,'Donor','donor');
+          if (don) b.donor = String(don).trim();
+          updated = true;
+        });
+      }
+
+      if (updated){
+        renderDashboard();
+        var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        var n=new Date();
+        document.getElementById('xl-info').textContent = '✓ '+file.name;
+        document.getElementById('hdr-date').textContent = n.getDate()+' '+months[n.getMonth()]+' '+n.getFullYear();
+      } else {
+        document.getElementById('xl-info').textContent = 'No matching sheets found';
+      }
+    } catch(err){
+      document.getElementById('xl-info').textContent = 'Error reading file';
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+  this.value=''; // allow re-upload of same file
+});
+
+/* ── RENDERING (wrapped in a function so Excel upload can re-call it) ── */
+function renderDashboard(){
+  /* clear re-renderable elements */
+  ['kpi-strip','rbc-grid','mini-donuts','donor-chart','donor-legend','borders-grid'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.innerHTML='';
+  });
+  var cd=document.getElementById('cat-donut'); if(cd) cd.innerHTML='';
+
+(function(){
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, html){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html !== undefined) e.innerHTML = html;
+  return e;
+}
+function svgEl(tag){ return document.createElementNS("http://www.w3.org/2000/svg", tag); }
+
+/* ── category map (id → label + color) ──────────────────────────────── */
+var catMap = {};
+DATA.categories.forEach(function(c){ catMap[c.id] = {label:c.label, color:c.color}; });
+
+/* ── item status ─────────────────────────────────────────────────────── */
+function iStatus(supplied, used, isThermo) {
+  if (supplied === 0) return 'pend';
+  if (isThermo) return 'ok';
+  var rem = supplied - used;
+  if (rem <= 0) return 'dep';
+  if (rem === 1) return 'crit';
+  if (rem / supplied < 0.2) return 'low';
+  return 'ok';
+}
+
+/* ── border badge ────────────────────────────────────────────────────── */
+function bBadge(items) {
+  var cons  = items.filter(function(i){ return i.cat !== 'thr'; });
+  var therms = items.filter(function(i){ return i.cat === 'thr'; });
+  if (cons.length === 0) {
+    var anyDel = therms.some(function(i){ return i.supplied > 0; });
+    return anyDel
+      ? {badge:'CRITICAL',    cls:'critical', dot:'r'}
+      : {badge:'NOT REACHED', cls:'miss',     dot:'r'};
+  }
+  if (cons.every(function(i){ return i.supplied === 0; }))
+    return {badge:'NOT REACHED', cls:'miss', dot:'r'};
+  var totalRem = cons.reduce(function(s,i){ return s+Math.max(0,i.supplied-i.used); }, 0);
+  var hasCrit  = cons.some(function(i){ return i.supplied>0 && (i.supplied-i.used)===1; });
+  if (totalRem === 0 || hasCrit) return {badge:'CRITICAL',   cls:'critical', dot:'r'};
+  var hasLow   = cons.some(function(i){
+    if (!i.supplied) return false;
+    var r = i.supplied - i.used;
+    return r > 1 && r / i.supplied < 0.2;
+  });
+  if (hasLow) return {badge:'LOW STOCK', cls:'low', dot:'a'};
+  return {badge:'ON TRACK', cls:'ok', dot:'g'};
+}
+
+/* ── precompute badges + auto-fill ALL KPI values & subtitles ───────── */
+var borderBadges = DATA.borders.map(function(b){ return bBadge(b.items); });
+
+var critBorders = DATA.borders.filter(function(b,i){ return borderBadges[i].cls==='critical' || borderBadges[i].cls==='low'; });
+DATA.kpis.alerts.value    = String(critBorders.length);
+DATA.kpis.alerts.subtitle = critBorders.map(function(b){ return b.name; }).join(' · ') || 'None';
+
+var missedBorders = DATA.borders.filter(function(b,i){ return borderBadges[i].cls==='miss'; });
+var reachedCount  = DATA.borders.length - missedBorders.length;
+DATA.kpis.reached.value    = reachedCount + ' / ' + DATA.borders.length;
+DATA.kpis.reached.subtitle = missedBorders.length > 0
+  ? missedBorders.map(function(b){ return b.name; }).join(' & ') + ' pending first delivery'
+  : 'All ' + DATA.borders.length + ' borders reached';
+
+var totalProcuredKpi    = DATA.categories.reduce(function(s,c){ return s + c.procured;    }, 0);
+var totalDistributedKpi = DATA.categories.reduce(function(s,c){ return s + c.distributed; }, 0);
+var overallPct = totalProcuredKpi > 0 ? Math.round(totalDistributedKpi / totalProcuredKpi * 100) : 0;
+DATA.overall.pct         = overallPct;
+DATA.overall.distributed = totalDistributedKpi;
+DATA.overall.procured    = totalProcuredKpi;
+DATA.kpis.rate.value    = overallPct + '%';
+DATA.kpis.rate.subtitle = totalDistributedKpi + ' of ' + totalProcuredKpi + ' procured items distributed';
+
+var totalSpendKpi = DATA.categories.reduce(function(s,c){ return s + c.spend; }, 0);
+DATA.kpis.spend.value    = '$' + totalSpendKpi.toLocaleString();
+DATA.kpis.spend.subtitle = DATA.categories.map(function(c){ return c.label; }).join(' · ');
+
+/* ── header date (auto — today) ─────────────────────────────────────── */
+var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var now = new Date();
+$("hdr-date").textContent = now.getDate()+" "+months[now.getMonth()]+" "+now.getFullYear();
+
+/* ── KPI strip ───────────────────────────────────────────────────────── */
+var kpiDefs = [
+  { cls:"dark", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', lbl:"Total Spend (USD)", key:"spend",   note:true  },
+  { cls:"green",icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>', lbl:"Distribution Rate", key:"rate",    note:false },
+  { cls:"teal", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>', lbl:"Borders Reached",   key:"reached", note:false },
+  { cls:"red",  icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', lbl:"Borders with Alert",key:"alerts",  note:false },
+];
+var strip = $("kpi-strip");
+kpiDefs.forEach(function(k){
+  var d = DATA.kpis[k.key];
+  var card = el("div","kpi "+k.cls);
+  card.innerHTML =
+    '<div class="kpi-head"><div class="kpi-icon">'+k.icon+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>'+
+    '<div class="kpi-val">'+d.value+'</div>'+
+    '<div class="kpi-sub">'+d.subtitle+'</div>'+
+    (k.note && d.note ? '<div class="kpi-est">'+d.note+'</div>' : '');
+  strip.appendChild(card);
+});
+
+/* ── overall donut ───────────────────────────────────────────────────── */
+var pct = DATA.overall.pct;
+var circ = 2 * Math.PI * 36;
+var arc  = circ * pct / 100;
+$("donut-arc").setAttribute("stroke-dasharray", arc.toFixed(1)+" "+circ.toFixed(1));
+$("donut-arc").setAttribute("stroke-dashoffset", (circ/4).toFixed(1));
+$("donut-pct").textContent = pct+"%";
+$("fulfil-tag").textContent = pct+"% overall";
+$("fulfil-summary").innerHTML =
+  '<span style="color:var(--green);font-weight:700">'+DATA.overall.distributed+'</span> units distributed<br>'+
+  'out of <strong>'+DATA.overall.procured+'</strong> procured';
+
+/* ── mini donuts (per category) ─────────────────────────────────────── */
+var miniC = 2 * Math.PI * 14;
+var miniOffset = (miniC/4).toFixed(2);
+var miniGrid = $("mini-donuts");
+var totalProcured = DATA.categories.reduce(function(a,c){ return a+c.procured; }, 0);
+var totalSpend    = DATA.categories.reduce(function(a,c){ return a+c.spend; }, 0);
+
+DATA.categories.forEach(function(cat){
+  var catPct = cat.procured > 0 ? Math.round(cat.distributed / cat.procured * 100) : 0;
+  var catArc = (miniC * catPct / 100).toFixed(2);
+  var isAlert = catPct < 60;
+  var wrapper = el("div","fmini"+(isAlert?" alert":""));
+  wrapper.innerHTML =
+    '<svg width="40" height="40" viewBox="0 0 40 40">'+
+      '<circle cx="20" cy="20" r="14" fill="none" stroke="'+(isAlert?"#FEE2E2":"#EEF2F7")+'" stroke-width="6"/>'+
+      '<circle cx="20" cy="20" r="14" fill="none" stroke="'+cat.color+'" stroke-width="6"'+
+        ' stroke-dasharray="'+catArc+' '+miniC.toFixed(2)+'"'+
+        ' stroke-dashoffset="'+miniOffset+'" stroke-linecap="round"/>'+
+      '<text x="20" y="24" text-anchor="middle" fill="'+cat.color+'" font-size="8" font-weight="900">'+catPct+'%</text>'+
+    '</svg>'+
+    '<div>'+
+      '<div style="font-size:10px;font-weight:700;color:'+cat.color+';display:flex;align-items:center;gap:4px;">'+cat.label+(isAlert?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="'+cat.color+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>':'')+'</div>'+
+      '<div style="font-size:9px;color:var(--muted)">'+cat.distributed+' / '+cat.procured+'</div>'+
+    '</div>';
+  miniGrid.appendChild(wrapper);
+});
+
+/* ── category donut (big) ────────────────────────────────────────────── */
+var bigC = 2 * Math.PI * 62;
+var bigSvg = $("cat-donut");
+
+var bgRing = svgEl("circle");
+["cx","cy","r","fill","stroke","stroke-width"].forEach(function(a,_){
+  bgRing.setAttribute(["cx","cy","r","fill","stroke","stroke-width"][_],
+    ["112","88","62","none","#F1F5F9","28"][_]);
+});
+bgRing.setAttribute("transform","rotate(-90 112 88)");
+bigSvg.appendChild(bgRing);
+
+var cumArc = 0;
+DATA.categories.forEach(function(cat){
+  var sharePct = cat.procured / totalProcured;
+  var arc = bigC * sharePct;
+  var ring = svgEl("circle");
+  ring.setAttribute("cx","112"); ring.setAttribute("cy","88"); ring.setAttribute("r","62");
+  ring.setAttribute("fill","none"); ring.setAttribute("stroke",cat.color); ring.setAttribute("stroke-width","28");
+  ring.setAttribute("stroke-dasharray", (arc-2).toFixed(1)+" "+(bigC-(arc-2)).toFixed(1));
+  ring.setAttribute("stroke-dashoffset", (-cumArc).toFixed(1));
+  ring.setAttribute("transform","rotate(-90 112 88)");
+  bigSvg.appendChild(ring);
+  cumArc += arc;
+});
+
+var biggest = DATA.categories.reduce(function(a,b){ return b.procured>a.procured?b:a; });
+var biggestPct = Math.round(biggest.procured / totalProcured * 100);
+[
+  {x:112,y:78, fill:"#94A3B8",size:7,weight:700,spacing:.8,text:"LARGEST SHARE"},
+  {x:112,y:96, fill:biggest.color,size:22,weight:900,text:biggestPct+"%"},
+  {x:112,y:109,fill:"#64748B",size:8.5,weight:600,text:biggest.label},
+].forEach(function(t){
+  var txt = svgEl("text");
+  txt.setAttribute("x",t.x); txt.setAttribute("y",t.y);
+  txt.setAttribute("text-anchor","middle"); txt.setAttribute("fill",t.fill);
+  txt.setAttribute("font-size",t.size); txt.setAttribute("font-weight",t.weight);
+  if(t.spacing) txt.setAttribute("letter-spacing",t.spacing);
+  txt.textContent = t.text;
+  bigSvg.appendChild(txt);
+});
+
+var ln = svgEl("line");
+ln.setAttribute("x1","198"); ln.setAttribute("y1","8"); ln.setAttribute("x2","198"); ln.setAttribute("y2","178");
+ln.setAttribute("stroke","#E2E8F0"); ln.setAttribute("stroke-width","1");
+bigSvg.appendChild(ln);
+
+DATA.categories.forEach(function(cat, i){
+  var y0 = 10 + i * 40;
+  var swatch = svgEl("rect");
+  swatch.setAttribute("x","208"); swatch.setAttribute("y",""+y0);
+  swatch.setAttribute("width","10"); swatch.setAttribute("height","10");
+  swatch.setAttribute("rx","2.5"); swatch.setAttribute("fill", cat.color);
+  bigSvg.appendChild(swatch);
+
+  var tName = svgEl("text");
+  tName.setAttribute("x","222"); tName.setAttribute("y",""+(y0+9));
+  tName.setAttribute("text-anchor","start"); tName.setAttribute("fill","#1A202C");
+  tName.setAttribute("font-size","9"); tName.setAttribute("font-weight","700");
+  tName.textContent = cat.label;
+  bigSvg.appendChild(tName);
+
+  var tSpend = svgEl("text");
+  tSpend.setAttribute("x","336"); tSpend.setAttribute("y",""+(y0+9));
+  tSpend.setAttribute("text-anchor","end"); tSpend.setAttribute("fill","#1A202C");
+  tSpend.setAttribute("font-size","9"); tSpend.setAttribute("font-weight","700");
+  tSpend.textContent = "$"+cat.spend.toLocaleString();
+  bigSvg.appendChild(tSpend);
+
+  var barY = y0 + 18;
+  var barMaxW = 114;
+  var barW = totalSpend > 0 ? Math.max(Math.round(cat.spend / totalSpend * barMaxW), 2) : 2;
+  var bgBar = svgEl("rect");
+  bgBar.setAttribute("x","222"); bgBar.setAttribute("y",""+barY);
+  bgBar.setAttribute("width",""+barMaxW); bgBar.setAttribute("height","4");
+  bgBar.setAttribute("rx","2"); bgBar.setAttribute("fill","#E2E8F0");
+  bigSvg.appendChild(bgBar);
+  var fgBar = svgEl("rect");
+  fgBar.setAttribute("x","222"); fgBar.setAttribute("y",""+barY);
+  fgBar.setAttribute("width",""+barW); fgBar.setAttribute("height","4");
+  fgBar.setAttribute("rx","2"); fgBar.setAttribute("fill", cat.color);
+  bigSvg.appendChild(fgBar);
+});
+
+var srcNote = svgEl("text");
+srcNote.setAttribute("x","112"); srcNote.setAttribute("y","180");
+srcNote.setAttribute("text-anchor","middle"); srcNote.setAttribute("fill","#94A3B8"); srcNote.setAttribute("font-size","7.5");
+srcNote.textContent = "$"+totalSpend.toLocaleString()+" est. spend · "+totalProcured+" units total";
+bigSvg.appendChild(srcNote);
+
+$("cat-tag").textContent = "$"+totalSpend.toLocaleString()+" · "+totalProcured+" units";
+
+/* ── RBC Pending Requests table ──────────────────────────────────────────── */
+(function(){
+  var grid = $("rbc-grid");
+  var statusCfg = {
+    pending:   {cls:'pending',   label:'Pending'},
+    inproc:    {cls:'inproc',    label:'In Procurement'},
+    confirmed: {cls:'confirmed', label:'Confirmed'},
+  };
+  var pendingCount = DATA.requests.filter(function(r){ return r.status !== 'confirmed'; }).length;
+  $("rbc-tag").textContent = pendingCount+" item"+(pendingCount!==1?"s":"")+" pending";
+
+  DATA.requests.forEach(function(r){
+    var cm = catMap[r.cat] || {label:r.cat, color:'#64748B'};
+    var sc = statusCfg[r.status] || {cls:'pending', label:r.status};
+    var row = el('div','req-row');
+    row.innerHTML =
+      '<div class="req-td"><span class="bc-cat-lbl '+r.cat+'">'+cm.label+'</span></div>'+
+      '<div class="req-td" style="font-weight:600">'+r.item+'</div>'+
+      '<div class="req-td" style="font-weight:800;color:var(--text)">'+r.qty+'</div>'+
+      '<div class="req-td" style="color:var(--muted)">'+r.requested+'</div>'+
+      '<div class="req-td" style="color:var(--muted)">'+r.expected+'</div>'+
+      '<div class="req-td"><span class="req-status '+sc.cls+'">'+sc.label+'</span></div>';
+    grid.appendChild(row);
+  });
+})();
+
+/* ── Donor breakdown chart (div-based) ───────────────────────────────── */
+(function(){
+  var wrap = $("donor-chart");
+  var legWrap = $("donor-legend");
+  if(!wrap) return;
+  var legLabels = {ipc:"IPC", thr:"Thermos.", ppe:"PPE", fur:"Furniture"};
+  function sumSpend(obj){ return Object.keys(obj).reduce(function(s,k){ return s+(obj[k]||0); },0); }
+  var grandTotal = DATA.donors.reduce(function(s,d){ return s+sumSpend(d.spend); }, 0);
+
+  DATA.donors.forEach(function(d){
+    var donorTotal = sumSpend(d.spend);
+    var pct = grandTotal > 0 ? Math.round(donorTotal / grandTotal * 100) : 0;
+    var fillPct = grandTotal > 0 ? (donorTotal / grandTotal * 100) : 0;
+    var segs = '';
+    var catKeys = Object.keys(d.spend);
+    catKeys.forEach(function(catId){
+      var amt = d.spend[catId];
+      if(!amt || amt <= 0) return;
+      var segPct = donorTotal > 0 ? (amt / donorTotal * fillPct) : 0;
+      var cm = catMap[catId] || {color:"#94A3B8"};
+      segs += '<div class="d-seg" style="width:'+segPct.toFixed(2)+'%;background:'+cm.color+'"></div>';
+    });
+    var catNames = catKeys.map(function(k){ return legLabels[k]||k; }).join(' · ');
+    var row = el('div','drow',
+      '<div class="d-hdr">'+
+        '<span class="d-name">'+d.name+'</span>'+
+        '<span class="d-spend">$'+donorTotal.toLocaleString()+'</span>'+
+        '<span class="d-pct" style="color:'+d.color+'">'+pct+'%</span>'+
+      '</div>'+
+      '<div class="d-track"><div class="d-fill">'+segs+'</div></div>'+
+      '<div class="d-cats">'+catNames+'</div>'
+    );
+    wrap.appendChild(row);
+  });
+
+  if(legWrap){
+    DATA.categories.forEach(function(cat){
+      var item = el('div','d-leg-item',
+        '<div class="d-leg-dot" style="background:'+cat.color+'"></div>'+
+        (legLabels[cat.id] || cat.id)
+      );
+      legWrap.appendChild(item);
+    });
+  }
+})();
+
+/* ── border cards — distribution details view ────────────────────────── */
+var topHexMap = { critical:'#EF4444', low:'#F59E0B', ok:'#10B981', miss:'#94A3B8' };
+
+var grid = $("borders-grid");
+
+DATA.borders.forEach(function(b, bi){
+  var bb = borderBadges[bi];
+  var notReached = (bb.cls === 'miss');
+  var noDist = (b.lastDist === '—');
+
+  var card = el("div","bcard"+(notReached?" pend":""));
+  card.style.borderTop = "3px solid "+(topHexMap[bb.cls]||'#64748B');
+
+  /* ── card header ── */
+  var hdr = el("div","bc-hdr");
+  hdr.innerHTML =
+    '<div class="bc-nblk">'+
+      '<div style="margin-bottom:3px">'+
+        '<span class="bc-name"'+(notReached?' style="color:var(--red)"':'')+'>'+b.name+'</span>'+
+      '</div>'+
+      '<div class="bc-prov">'+b.district+' · '+b.region+'</div>'+
+    '</div>'+
+    '<div class="sdot '+bb.dot+'"></div>';
+  card.appendChild(hdr);
+
+  /* ── distribution meta row ── */
+  var meta = el("div");
+  meta.style.cssText = "display:flex;align-items:center;justify-content:space-between;"+
+    "padding:6px 14px;background:#F8FAFC;border-bottom:1px solid var(--border);flex-shrink:0;";
+  var donorLabel = (b.donor && b.donor !== 'Not assigned') ? b.donor : 'Unassigned';
+  meta.innerHTML =
+    '<div style="display:flex;align-items:center;gap:6px">'+
+      '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
+      '<span style="font-size:10px;color:var(--muted)">Last dist:</span>'+
+      '<span style="font-size:10px;font-weight:700;color:'+(noDist?'var(--red)':'var(--text)')+'">'+b.lastDist+'</span>'+
+    '</div>'+
+    '<span class="bc-donor-tag">'+donorLabel+'</span>';
+  card.appendChild(meta);
+
+  /* ── items list ── */
+  var body = el("div","bc-body");
+
+  var seen = {}, catOrder = [];
+  b.items.forEach(function(i){ if(!seen[i.cat]){ seen[i.cat]=true; catOrder.push(i.cat); } });
+
+  if (b.items.length === 0 || (b.items.length === 1 && b.items[0].supplied === 0 && noDist)) {
+    var empty = el("div");
+    empty.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:20px 0;";
+    empty.innerHTML =
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+
+      '<span style="font-size:10px;color:#94A3B8;font-weight:600">No distribution recorded yet</span>';
+    body.appendChild(empty);
+  } else {
+    catOrder.forEach(function(catId){
+      var cm = catMap[catId] || {label:catId, color:'#64748B'};
+      var catBlock = el("div","bc-cat");
+      var lbl = el("span","bc-cat-lbl "+catId);
+      lbl.textContent = cm.label;
+      catBlock.appendChild(lbl);
+
+      b.items.filter(function(i){ return i.cat===catId; }).forEach(function(itm){
+        var isThermo = (itm.cat === 'thr');
+        var iblock = el("div","bc-item");
+
+        /* item name */
+        iblock.innerHTML = '<div class="bc-iname">'+itm.name+'</div>';
+
+        /* distribution quantity row */
+        var statusFills  = { dep:'var(--red)', crit:'var(--red)', low:'var(--amber)', ok:'var(--green)', pend:'#94A3B8' };
+        var statusLabels = { dep:'Depleted', crit:'Critical', low:'Low Stock', ok:'Sufficient', pend:'Not received' };
+        var st = iStatus(itm.supplied, itm.used, isThermo);
+
+        if (itm.supplied === 0) {
+          iblock.innerHTML +=
+            '<div style="font-size:10px;color:var(--muted);margin-top:3px;font-style:italic">Pending delivery</div>';
+        } else if (isThermo) {
+          var cond = itm.condition || (itm.used+' Functional');
+          iblock.innerHTML +=
+            '<div class="bc-cols two">'+
+              '<div><div class="bc-col-hdr">Deployed</div><div class="bc-col-val">'+itm.used+'</div></div>'+
+              '<div><div class="bc-col-hdr">Condition</div>'+
+                '<span class="bc-sbadge ok">✓ '+cond+'</span>'+
+              '</div>'+
+            '</div>';
+        } else {
+          var pctUsed = itm.supplied > 0 ? Math.round(itm.used/itm.supplied*100) : 0;
+          iblock.innerHTML +=
+            '<div class="bc-cols">'+
+              '<div><div class="bc-col-hdr">Distributed</div><div class="bc-col-val">'+itm.supplied+'</div></div>'+
+              '<div><div class="bc-col-hdr">Used</div><div class="bc-col-val">'+itm.used+'</div></div>'+
+              '<div>'+
+                '<div class="bc-col-hdr">Stock Status</div>'+
+                '<div class="bc-sbar"><div class="bc-sfill" style="width:'+pctUsed+'%;background:'+statusFills[st]+'"></div></div>'+
+                '<span class="bc-sbadge '+st+'">'+statusLabels[st]+'</span>'+
+              '</div>'+
+            '</div>';
+        }
+        catBlock.appendChild(iblock);
+      });
+      body.appendChild(catBlock);
+    });
+  }
+
+  card.appendChild(body);
+  grid.appendChild(card);
+});
+
+})(); /* end render IIFE */
+} /* end renderDashboard */
+
+/* run on first load */
+renderDashboard();
+</script>
+</body>
+</html>
